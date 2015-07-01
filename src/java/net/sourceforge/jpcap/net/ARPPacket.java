@@ -63,14 +63,14 @@ public class ARPPacket extends EthernetPacket
    * Fetch the proto sender address.
    */
   public String getSourceProtoAddress() {
-    return IPAddress.extract(ARP_S_PR_ADDR_POS, header);
+    return IPAddress.extract(ARP_S_PR_ADDR_POS, header,4); //TODO srikanth: check v6
   }
 
   /**
    * Fetch the proto sender address.
    */
   public String getDestinationProtoAddress() {
-    return IPAddress.extract(ARP_T_PR_ADDR_POS, header);
+    return IPAddress.extract(ARP_T_PR_ADDR_POS, header,4); //TODO srikanth: check v6
   }
 
   /**

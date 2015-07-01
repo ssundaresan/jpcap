@@ -27,15 +27,17 @@ public class UDPPacket extends IPPacket implements UDPFields, Serializable
 {
   /**
    * Create a new UDP packet.
+ * @throws Exception
    */
-  public UDPPacket(int lLen, byte [] bytes) {
+  public UDPPacket(int lLen, byte [] bytes) throws Exception {
     super(lLen, bytes);
   }
 
   /**
    * Create a new UDP packet.
+ * @throws Exception
    */
-  public UDPPacket(int lLen, byte [] bytes, Timeval tv) {
+  public UDPPacket(int lLen, byte [] bytes, Timeval tv) throws Exception {
     this(lLen, bytes);
     this._timeval = tv;
   }

@@ -47,8 +47,13 @@ public class IPAddress
    * @param bytes an array of bytes containing the IP address.
    * @return a string of the form "255.255.255.255"
    */
-  public static String extract(int offset, byte [] bytes) {
-    return toString(ArrayHelper.extractInteger(bytes, offset, WIDTH));
+  public static String extract(int offset, byte [] bytes,int version) {
+	  if(version == 6){
+		  return toString(ArrayHelper.extractInteger(bytes, offset, WIDTH6));
+	  }
+	  else{
+		  return toString(ArrayHelper.extractInteger(bytes, offset, WIDTH));
+	  }
     /*
     StringBuffer sa = new StringBuffer();
     for(int i=offset; i<offset + WIDTH; i++) {
@@ -101,6 +106,7 @@ public class IPAddress
    * The width in bytes of an IP address.
    */
   public static final int WIDTH = 4;
+  public static final int WIDTH6 = 16;
 
   private String _rcsid = 
     "$Id: IPAddress.java,v 1.5 2002/11/07 23:23:38 pcharles Exp $";

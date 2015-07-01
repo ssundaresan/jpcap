@@ -25,11 +25,11 @@ import java.io.Serializable;
  */
 public class ICMPPacket extends IPPacket implements ICMPFields, Serializable
 {
-  public ICMPPacket(int lLen, byte [] bytes) {
+  public ICMPPacket(int lLen, byte [] bytes) throws Exception {
     super(lLen, bytes);
   }
 
-  public ICMPPacket(int lLen, byte [] bytes, Timeval tv) {
+  public ICMPPacket(int lLen, byte [] bytes, Timeval tv) throws Exception {
     this(lLen, bytes);
     this._timeval = tv;
   }

@@ -10,7 +10,13 @@ package net.sourceforge.jpcap.net;
 import net.sourceforge.jpcap.util.AnsiEscapeSequences;
 import net.sourceforge.jpcap.util.ArrayHelper;
 import net.sourceforge.jpcap.util.Timeval;
+
 import java.io.Serializable;
+
+import android.util.Log;
+
+import java.net.InetAddress;
+import java.util.Arrays;
 
 
 /**
@@ -32,21 +38,37 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
 
   /** 
    * Create a new IP packet. 
+ * @throws Exception 
    */
-  public IPPacket(int lLen, byte [] bytes) {
+  public IPPacket(int lLen, byte [] bytes) throws Exception {
     super(lLen, bytes);
+
+    this.getVersion();
     // fetch the actual header length from the incoming bytes
-    _ipHeaderLength = 
-      (ArrayHelper.extractInteger(_bytes,_ethOffset+IP_VER_POS,
-				   IP_VER_LEN) & 0xf) * 4;
+    if (this._version == 4){
+    	_ipHeaderLength = 
+    			(ArrayHelper.extractInteger(_bytes,_ethOffset+IP_VER_POS,
+    					IP_VER_LEN) & 0xf) * 4;
+    }
+    else if (this._version == 6){
+//    	if (this.getIPProtocol() != 6 && this.getIPProtocol() != 17){
+//    		throw new Exception("IPv6 extension " + this.getIPProtocol() + " not supported.");
+//    	}	
+        // set TCP header length
+    	_ipHeaderLength = 40; //No support for extensions in v6 yet
+    }
+    else {
+//        throw new Exception("IP packet version " + this._version + " not recognized.");
+    }
     // set offset into _bytes of previous layers
     _ipOffset = _ethOffset + _ipHeaderLength;
   }
 
   /**
    * Create a new IP packet.
+ * @throws Exception 
    */
-  public IPPacket(int lLen, byte [] bytes, Timeval tv) {
+  public IPPacket(int lLen, byte [] bytes, Timeval tv) throws Exception {
     this(lLen, bytes);
     this._timeval = tv;
   }
@@ -99,9 +121,18 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getTypeOfService() {
     if(! _typeOfServiceSet) {
-      _typeOfService = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_TOS_POS,
-				   IP_TOS_LEN);
+    	if(_version == 4){
+    		_typeOfService = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_TOS_POS,
+    						IP_TOS_LEN);
+    	}
+    	else{
+    		_typeOfService = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP6_TOS_POS,
+    						IP6_TOS_LEN);
+    		_typeOfService = _typeOfService<<4;
+    		_typeOfService = _typeOfService>>8;
+    	}
       _typeOfServiceSet = true;
     }
     return _typeOfService;
@@ -114,9 +145,16 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getLength() {
     if(! _lengthSet) {
-      _length = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_LEN_POS,
+    	if(_version == 4){
+    		_length = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_LEN_POS,
                                    IP_LEN_LEN);
+    	}
+    	else{
+    		_length  = 
+    				ArrayHelper.extractInteger(_bytes,_ethOffset + IP6_LEN_POS,
+    						IP6_LEN_LEN) + getIPHeaderLength();
+    	}
       _lengthSet = true;
     }
     return _length;
@@ -130,9 +168,14 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getId() {
     if(! _idSet) {
-      _id = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_ID_POS, IP_ID_LEN);
-      _idSet = true;
+    	if(_version == 4){
+    		_id = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_ID_POS, IP_ID_LEN);
+    					_idSet = true;
+    	}
+    	else{	//TODO implement reading extension header in v6?
+    		_id = 0;
+    	}
     }
     return _id;
   }
@@ -144,13 +187,18 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getFragmentFlags() {
     if(! _fragmentFlagsSet) {
-      // fragment flags are the high 3 bits
-      int huh = ArrayHelper.extractInteger(_bytes,
-					   _ethOffset + IP_FRAG_POS,
-					   IP_FRAG_LEN);
-      _fragmentFlags = 
-	(ArrayHelper.extractInteger(_bytes, _ethOffset + IP_FRAG_POS,
-				    IP_FRAG_LEN) >> 13) & 0x7;
+    	if(_version == 4){
+    		// fragment flags are the high 3 bits
+    		int huh = ArrayHelper.extractInteger(_bytes,
+    				_ethOffset + IP_FRAG_POS,
+    				IP_FRAG_LEN);
+    		_fragmentFlags = 
+    				(ArrayHelper.extractInteger(_bytes, _ethOffset + IP_FRAG_POS,
+    						IP_FRAG_LEN) >> 13) & 0x7;
+    	}
+    	else{
+    		_fragmentFlags = 0;
+    	}
       _fragmentFlagsSet = true;
     }
     return _fragmentFlags;
@@ -180,9 +228,16 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getTimeToLive() {
     if(! _timeToLiveSet) {
-      _timeToLive = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_TTL_POS,
-				   IP_TTL_LEN);
+    	if(_version == 4){
+    		_timeToLive = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_TTL_POS,
+    						IP_TTL_LEN);
+    	}
+    	else{
+    		_timeToLive = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP6_TTL_POS,
+    						IP6_TTL_LEN);
+    	}
       _timeToLiveSet = true;
     }
     return _timeToLive;
@@ -196,9 +251,16 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getIPProtocol() {
     if(! _ipProtocolSet) {
-      _ipProtocol = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_CODE_POS,
-				   IP_CODE_LEN);
+    	if(_version == 4){
+    		_ipProtocol = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_CODE_POS,
+    						IP_CODE_LEN);
+    	}
+    	else{
+    		_ipProtocol = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP6_NEXTHEADER_POS,
+    						IP6_NEXTHEADER_LEN);
+    	}
       _ipProtocolSet = true;
     }
     return _ipProtocol;
@@ -218,9 +280,14 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public int getIPChecksum() {
     if(! _ipChecksumSet) {
-      _ipChecksum = 
-	ArrayHelper.extractInteger(_bytes, _ethOffset + IP_CSUM_POS,
-				   IP_CSUM_LEN);
+    	if(_version == 4){
+    		_ipChecksum = 
+    				ArrayHelper.extractInteger(_bytes, _ethOffset + IP_CSUM_POS,
+    						IP_CSUM_LEN);
+    	}
+    	else{
+    		_ipChecksum = 0;
+    	}
       _ipChecksumSet = true;
     }
     return _ipChecksum;
@@ -239,7 +306,20 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public String getSourceAddress() {
     if(_sourceAddress == null) {
-      _sourceAddress = IPAddress.extract(_ethOffset + IP_SRC_POS, _bytes);
+    	if(_version == 4){
+    		_sourceAddress = IPAddress.extract(_ethOffset + IP_SRC_POS, _bytes, _version);
+    	}
+    	else{
+    		//_sourceAddress = IPAddress.extract(_ethOffset + IP6_SRC_POS, _bytes, _version);
+    		try{
+    			InetAddress tmpAddr = InetAddress.getByAddress(null, Arrays.copyOfRange(_bytes, _ethOffset+IP6_SRC_POS, _ethOffset+IP6_SRC_POS+16));
+    			_sourceAddress = tmpAddr.getHostAddress();
+    		}
+    		catch(Exception e1){
+    			Log.i("BRODROID",e1.getMessage());
+    			_sourceAddress = null;
+    		}
+    	}
     }
     return _sourceAddress;
   }
@@ -250,9 +330,16 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public byte[] getSourceAddressBytes() {
     if(_sourceAddressBytes == null) {
-      _sourceAddressBytes = new byte[4];
-      System.arraycopy(_bytes, _ethOffset + IP_SRC_POS,
-		       _sourceAddressBytes, 0, 4);
+    	if(_version == 4){
+    		_sourceAddressBytes = new byte[4];
+    		System.arraycopy(_bytes, _ethOffset + IP_SRC_POS,
+    				_sourceAddressBytes, 0, 4);
+    	}
+    	else{
+    		_sourceAddressBytes = new byte[16];
+    		System.arraycopy(_bytes, _ethOffset + IP6_SRC_POS,
+    				_sourceAddressBytes, 0, 16);
+    	}
     }
     return _sourceAddressBytes;
   }
@@ -264,8 +351,13 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public long getSourceAddressAsLong() {
     if(! _sourceAddressAsLongSet) {
-      _sourceAddressAsLong = 
-	ArrayHelper.extractLong(_bytes, _ethOffset + IP_SRC_POS, 4);
+    	if(_version == 4){
+    		_sourceAddressAsLong = 
+    				ArrayHelper.extractLong(_bytes, _ethOffset + IP_SRC_POS, 4);
+    	}
+    	else{//No 128bit efficient data type that I can think of right now
+    		_sourceAddressAsLong = 0;
+    	}
       _sourceAddressAsLongSet = true;
     }
     return _sourceAddressAsLong;
@@ -277,8 +369,23 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public String getDestinationAddress() {
     if(_destinationAddress == null) {
-      _destinationAddress = 
-	IPAddress.extract(_ethOffset + IP_DST_POS, _bytes);
+    	if(_version == 4){
+    		_destinationAddress = 
+    				IPAddress.extract(_ethOffset + IP_DST_POS, _bytes,_version);
+    	}
+    	else{
+    		//_sourceAddress = IPAddress.extract(_ethOffset + IP6_SRC_POS, _bytes, _version);
+    		try{
+    			InetAddress tmpAddr = InetAddress.getByAddress(null, Arrays.copyOfRange(_bytes, _ethOffset+IP6_DST_POS, _ethOffset+IP6_DST_POS+16));
+    			_destinationAddress = tmpAddr.getHostAddress();
+    		}
+    		catch(Exception e1){
+    			Log.i("BROD",e1.getMessage());
+    			_destinationAddress = null;
+    		}
+    		//_destinationAddress = 
+    		//		IPAddress.extract(_ethOffset + IP6_DST_POS, _bytes,_version);
+    	}
     }
     return _destinationAddress;
   }
@@ -289,9 +396,16 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public byte[] getDestinationAddressBytes() {
     if(_destinationAddressBytes == null) {
-      _destinationAddressBytes = new byte[4];
-      System.arraycopy(_bytes,_ethOffset+IP_DST_POS,
-		       _destinationAddressBytes,0,4);
+    	if(_version == 4){
+    		_destinationAddressBytes = new byte[4];
+    		System.arraycopy(_bytes,_ethOffset+IP_DST_POS,
+    				_destinationAddressBytes,0,4);
+    	}
+    	else{
+    		_destinationAddressBytes = new byte[16];
+    		System.arraycopy(_bytes,_ethOffset+IP6_DST_POS,
+    				_destinationAddressBytes,0,16);
+    	}
     }
     return _destinationAddressBytes;
   }
@@ -303,8 +417,13 @@ public class IPPacket extends EthernetPacket implements IPFields, Serializable
    */
   public long getDestinationAddressAsLong() {
     if(! _destinationAddressAsLongSet) {
-      _destinationAddressAsLong = 
-	ArrayHelper.extractLong(_bytes, _ethOffset + IP_DST_POS, 4);
+    	if(_version == 4){
+    		_destinationAddressAsLong = 
+    				ArrayHelper.extractLong(_bytes, _ethOffset + IP_DST_POS, 4);
+    	}
+    	else{//No efficient 128bit data type
+    		_destinationAddressAsLong = 0;
+    	}
       _destinationAddressAsLongSet = true;
     }
     return _destinationAddressAsLong;

@@ -27,8 +27,9 @@ public class TCPPacket extends IPPacket implements TCPFields, Serializable
 {
   /** 
    * Create a new TCP packet.
+ * @throws Exception 
    */
-  public TCPPacket(int lLen, byte [] bytes) {
+  public TCPPacket(int lLen, byte [] bytes) throws Exception {
     super(lLen,bytes);
     // set TCP header length
     _tcpHeaderLength =
@@ -43,8 +44,9 @@ public class TCPPacket extends IPPacket implements TCPFields, Serializable
 
   /**
    * Create a new TCP packet.
+ * @throws Exception 
    */
-  public TCPPacket(int lLen, byte [] bytes, Timeval tv) {
+  public TCPPacket(int lLen, byte [] bytes, Timeval tv) throws Exception {
     this(lLen, bytes);
     this._timeval = tv;
   }

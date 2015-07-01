@@ -25,11 +25,11 @@ import java.io.Serializable;
  */
 public class IGMPPacket extends IPPacket implements IGMPFields, Serializable
 {
-  public IGMPPacket(int lLen, byte [] bytes) {
+  public IGMPPacket(int lLen, byte [] bytes) throws Exception {
     super(lLen, bytes);
   }
 
-  public IGMPPacket(int lLen, byte [] bytes, Timeval tv) {
+  public IGMPPacket(int lLen, byte [] bytes, Timeval tv) throws Exception {
     this(lLen, bytes);
     this._timeval = tv;
   }
@@ -115,7 +115,7 @@ public class IGMPPacket extends IPPacket implements IGMPFields, Serializable
    * Fetch the IGMP group address.
    */
   public String getGroupAddress() {
-    return IPAddress.extract(_ipOffset + IGMP_GADDR_POS, _bytes);
+    return IPAddress.extract(_ipOffset + IGMP_GADDR_POS, _bytes,4);//TODO srikanth: check about v6
   }
 
 
